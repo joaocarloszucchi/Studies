@@ -1,6 +1,6 @@
 Key exchange algorhytm
 
-at the beggining, 2 prime numbers are agreed between the 2 parts of the communication
+at the beggining, the members agree 2 common numbers. the modulus(which is a prime number), and the base, that is the primitive root of the modulus
 
 (modulus) p = 23
 (base) g = 5

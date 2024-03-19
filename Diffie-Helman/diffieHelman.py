@@ -48,6 +48,28 @@ def random_prime_in_interval(start, end):
 #end = 2000000
 #random_prime = random_prime_in_interval(start, end)
 #print("Random prime number between", start, "and", end, ":", random_prime)
+        
+
+def is_primitive_root(g, p):
+    """
+    Checks if g is a primitive root modulo p.
+    """
+    residues = set()
+    for i in range(1, p):
+        residue = pow(g, i, p)
+        if residue in residues:
+            return False
+        residues.add(residue)
+    return True
+
+def find_primitive_root(p):
+    """
+    Finds a primitive root modulo p.
+    """
+    for g in range(2, p):
+        if is_primitive_root(g, p):
+            return g
+    return None
 
 class Connection:
     def __init__(self, user1, user2):
@@ -59,7 +81,7 @@ class Connection:
         interval1 = 1000
         interval2 = 10000
         p = random_prime_in_interval(interval1, interval2)
-        g = random_prime_in_interval(interval1, interval2)
+        g = find_primitive_root(p)
 
         self.user1.setBaseAndModulus(g, p)
         self.user2.setBaseAndModulus(g, p)
