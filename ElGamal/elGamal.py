@@ -17,6 +17,8 @@ def main():
 
     conn.sendEncryptedMessage()
 
+    bob.decryptMessage()
+
     alice.printInfo()
     bob.printInfo()
 

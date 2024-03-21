@@ -71,6 +71,7 @@ class User:
         self.connPK = None
         self.message = None
         self.encryptedBlocks = None
+        self.decryptedBlocks = None
 
     def printInfo(self):
         print("name", self.name, "\n",
@@ -81,6 +82,7 @@ class User:
               "connPK", self.connPK, "\n",
               "message", self.message, "\n",
               "encryptedBlocks", self.encryptedBlocks, "\n",
+              "decryptedBlocks", self.decryptedBlocks, "\n",
               )
         
     def keyGeneration(self):
@@ -117,15 +119,44 @@ class User:
     def getEncryptedBlocks(self):
         return self.encryptedBlocks
     
+    def getAdditional(self, char):
+        encoded_char = str(ord(char))
+        if int(encoded_char) < 10:
+            return '00'
+        elif int(encoded_char) < 100:
+            return '0'
+        return ''
+
     def encodeMessage(self):
         """Encode a message using ASCII encoding"""
+        additional = self.getAdditional(self.message[0])
+
         encoded_message = ""
         for char in self.message:
             encoded_char = str(ord(char))  # Get the ASCII value of the character
+            if int(encoded_char) < 10:
+                encoded_message += '00'
+            elif int(encoded_char) < 100:
+                encoded_message += '0'
             encoded_message += encoded_char
-        return int(encoded_message)
+        return int(encoded_message), additional
     
-    def splitMessage(self, encodedMessage):
+    def decodeMessage(self, encoded_integer):
+        """Decode an integer into the corresponding text (ASCII representation)."""
+        encoded_str = str(encoded_integer)
+        decoded_message = ""
+
+        i = 0
+        while i < len(encoded_str):
+            # Take each two-digit substring and convert it to its corresponding character
+            char_code = int(encoded_str[i:i+3])
+            decoded_message += chr(char_code)
+            # Move to the next two digits
+            i += 3
+
+        self.message = decoded_message
+
+    def splitMessage(self, encodedMessage, firstAdd):
         """Split a big integer into smaller parts smaller than p"""
         p = self.p
         big_integer_str = str(encodedMessage)
@@ -133,23 +164,53 @@ class User:
 
         start = 0
         end = len(str(p)) - 1  # Maximum length of each block
-        while start < len(big_integer_str):
+        total = len(big_integer_str)
+        while start < total:
             block = int(big_integer_str[start:end])
-            blocks.append(block)
             start = end
             end += len(str(p)) - 1  # Increase the end index for the next block
+            add = self.computeAdditional(len(str(block)), end - start, start, total)
+            blocks.append((block, add))
+
+        blocks[0] = (blocks[0][0], firstAdd)
 
         return blocks
     
+    def computeAdditional(self, length, step, start, total):
+        if length < step:
+            if start >= total :
+                if total - start != length:
+                    return '0'* ((total - start) - length)
+                return ''
+            return '0'*(step - length)
+        return ''
+
     def encryptMessage(self):
-        m = self.encodeMessage()
-        blocks = self.splitMessage(m)
+        m, firstAdd = self.encodeMessage()
+        blocks = self.splitMessage(m, firstAdd)
         encryptedBlocks = []
 
-        for block in blocks:
+        for blockTuple in blocks:
+            block, add = blockTuple
             k = random.randint(2, self.p - 2)
             c1 = pow(self.g, k, self.p)
             c2 = block * pow(self.connPK, k, self.p)
-            encryptedBlocks.append((c1, c2))
+            encryptedBlocks.append((c1, c2, add))
 
         self.encryptedBlocks = encryptedBlocks
+
+    def decryptMessage(self):
+        """Decrypts a list of ciphertext blocks using the private key."""
+        decryptedMessage = ""
+
+        for c1, c2, add in self.encryptedBlocks:
+            # Compute s = c1^private_key mod p
+            s = pow(c1, self.privateKey, self.p)
+            # Compute m = c2 * (s^-1 mod p) mod p
+            inverse_s = pow(s, -1, self.p)
+            m = (c2 * inverse_s) % self.p
+            decryptedMessage += add
+            decryptedMessage += str(m)
+
+        self.decodeMessage(decryptedMessage)
+        self.encryptedBlocks = None
